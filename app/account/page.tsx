@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { useState, ReactNode } from 'react';
 
@@ -7,7 +9,6 @@ import { useUser } from 'utils/useUser';
 import { postData } from 'utils/helpers';
 
 import { User } from '@supabase/supabase-js';
-import { withPageAuth } from '@supabase/auth-helpers-nextjs';
 
 interface Props {
   title: string;
@@ -30,8 +31,6 @@ function Card({ title, description, footer, children }: Props) {
     </div>
   );
 }
-
-export const getServerSideProps = withPageAuth({ redirectTo: '/signin' });
 
 export default function Account({ user }: { user: User }) {
   const [loading, setLoading] = useState(false);

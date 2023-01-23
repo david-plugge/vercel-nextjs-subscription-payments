@@ -1,39 +1,41 @@
 import { stripe } from 'utils/stripe';
-import { withApiAuth } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createOrRetrieveCustomer } from 'utils/supabase-admin';
 import { getURL } from 'utils/helpers';
+import { NextApiHandler } from 'next';
 
-export default withApiAuth(async function createCheckoutSession(
-  req,
-  res,
-  supabaseServerClient
-) {
-  if (req.method === 'POST') {
-    try {
-      const {
-        data: { user }
-      } = await supabaseServerClient.auth.getUser();
-      if (!user) throw Error('Could not get user');
-      const customer = await createOrRetrieveCustomer({
-        uuid: user.id || '',
-        email: user.email || ''
-      });
-
-      if (!customer) throw Error('Could not get customer');
-      const { url } = await stripe.billingPortal.sessions.create({
-        customer,
-        return_url: `${getURL()}/account`
-      });
-
-      return res.status(200).json({ url });
-    } catch (err: any) {
-      console.log(err);
-      res
-        .status(500)
-        .json({ error: { statusCode: 500, message: err.message } });
-    }
-  } else {
+const CreatePortalLinkRoute: NextApiHandler = async (req, res) => {
+  if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     res.status(405).end('Method Not Allowed');
+
+    return;
   }
-});
+
+  try {
+    const supabase = createServerSupabaseClient({ req, res });
+
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    if (!user) throw Error('Could not get user');
+    const customer = await createOrRetrieveCustomer({
+      uuid: user.id || '',
+      email: user.email || ''
+    });
+
+    if (!customer) throw Error('Could not get customer');
+    const { url } = await stripe.billingPortal.sessions.create({
+      customer,
+      return_url: `${getURL()}/account`
+    });
+
+    return res.status(200).json({ url });
+  } catch (err: any) {
+    console.log(err);
+    res.status(500).json({ error: { statusCode: 500, message: err.message } });
+  }
+};
+
+export default CreatePortalLinkRoute;
